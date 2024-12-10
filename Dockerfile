@@ -70,7 +70,7 @@ RUN chmod +x docker/entrypoint.sh
 
 EXPOSE 4000/tcp
 
-RUN litellm --port 4000 --config /app/config.yaml
+RUN litellm --port 4000
 
 # ENTRYPOINT ["litellm"]
 
