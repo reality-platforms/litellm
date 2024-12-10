@@ -83,5 +83,4 @@ model_list:
       api_key: os.environ/TOGETHER_API_KEY
 
 router_settings:
-  context_window_fallbacks: [{"WhereIsAI/UAE-Large-V1": ["WhereIsAI/UAE-Large-V1-fallback"]}]
-  content_policy_fallbacks: [{"WhereIsAI/UAE-Large-V1": ["WhereIsAI/UAE-Large-V1-fallback"]}]
+  fallbacks: [{"WhereIsAI/UAE-Large-V1": ["WhereIsAI/UAE-Large-V1-fallback"]}]
