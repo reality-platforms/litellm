@@ -82,5 +82,6 @@ model_list:
       model: together_ai/WhereIsAI/UAE-Large-V1
       api_key: os.environ/TOGETHER_API_KEY
 
-litellm_settings:
+router_settings:
   context_window_fallbacks: [{"WhereIsAI/UAE-Large-V1": ["WhereIsAI/UAE-Large-V1-fallback"]}]
+  content_policy_fallbacks: [{"WhereIsAI/UAE-Large-V1": ["WhereIsAI/UAE-Large-V1-fallback"]}]
