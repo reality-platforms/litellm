@@ -83,4 +83,4 @@ model_list:
       api_key: os.environ/TOGETHER_API_KEY
 
 router_settings:
-  fallbacks: [{"WhereIsAI/UAE-Large-V1": ["WhereIsAI/UAE-Large-V1-fallback"]}]
+  fallbacks: [{"WhereIsAI/UAE-Large-V1":["WhereIsAI/UAE-Large-V1-fallback","llama-v3p1-405b-instruct"]},{"llama-v3p3-70b-instruct":["llama-v3p1-8b-instruct"]}]
