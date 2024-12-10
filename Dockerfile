@@ -70,9 +70,9 @@ RUN chmod +x docker/entrypoint.sh
 
 EXPOSE 4000/tcp
 
-RUN litellm --port 4000
+# RUN litellm --port 4000
 
-# ENTRYPOINT ["litellm"]
+ENTRYPOINT ["litellm", "--port", "4000", "--detailed_debug"]
 
 # Append "--detailed_debug" to the end of CMD to view detailed debug logs 
 # CMD ["--port", "4000"]
