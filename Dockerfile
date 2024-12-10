@@ -73,4 +73,4 @@ EXPOSE 4000/tcp
 ENTRYPOINT ["litellm"]
 
 # Append "--detailed_debug" to the end of CMD to view detailed debug logs 
-CMD ["--port", "4000", '--config', './config.yaml']
+CMD ["--port=4000", '--detailed_debug']
