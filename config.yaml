@@ -69,3 +69,18 @@ model_list:
       api_key: os.environ/FIREWORKS_API_KEY
     model_info:
       mode: audio_transcription
+
+  - model_name: WhereIsAI/UAE-Large-V1
+    litellm_params:
+      api_base: https://api.fireworks.ai/inference/v1
+      model: fireworks_ai/WhereIsAI/UAE-Large-V1
+      api_key: os.environ/FIREWORKS_API_KEY
+
+  - model_name: WhereIsAI/UAE-Large-V1-fallback
+    litellm_params:
+      api_base: https://api.together.xyz/v1
+      model: together_ai/WhereIsAI/UAE-Large-V1
+      api_key: os.environ/TOGETHER_API_KEY
+
+litellm_settings:
+  context_window_fallbacks: [{"WhereIsAI/UAE-Large-V1": ["WhereIsAI/UAE-Large-V1-fallback"]}]
