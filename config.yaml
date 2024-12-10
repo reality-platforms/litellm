@@ -42,6 +42,11 @@ model_list:
       model: fireworks_ai/accounts/fireworks/models/llama-v3p3-70b-instruct
       api_base: https://api.fireworks.ai/inference/v1
       api_key: os.environ/FIREWORKS_API_KEY
+  - model_name: llama-v3p2-11b-vision-instruct
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/llama-v3p2-11b-vision-instruct
+      api_base: https://api.fireworks.ai/inference/v1
+      api_key: os.environ/FIREWORKS_API_KEY
   - model_name: llama-v3p2-90b-vision-instruct
     litellm_params:
       model: fireworks_ai/accounts/fireworks/models/llama-v3p2-90b-vision-instruct
