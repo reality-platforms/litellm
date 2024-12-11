@@ -117,3 +117,8 @@ model_list:
 
 router_settings:
   fallbacks: [{"WhereIsAI/UAE-Large-V1":["together/WhereIsAI/UAE-Large-V1"]},{"llama-v3p1-8b-instruct":["groq/llama-3.1-8b-instant"]},{"llama-v3p1-70b-instruct":["groq/llama-3.1-70b-versatile"]},{"llama-v3p2-11b-vision-instruct":["groq/llama-3.2-11b-vision-preview"]},{"llama-v3p2-90b-vision-instruct":["groq/llama-3.2-90b-vision-preview"]}]
+
+
+litellm_settings:
+  callbacks: custom_callbacks.proxy_handler_instance # sets litellm.callbacks = [proxy_handler_instance]
+  redact_user_api_key_info: true
