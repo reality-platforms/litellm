@@ -120,5 +120,5 @@ router_settings:
 
 
 litellm_settings:
-  callbacks: custom_callbacks.proxy_handler_instance # sets litellm.callbacks = [proxy_handler_instance]
-  redact_user_api_key_info: true
+  # custom logging
+  callbacks: custom_callbacks.proxy_handler_instance
