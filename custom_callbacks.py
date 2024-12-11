@@ -6,11 +6,14 @@ from litellm.integrations.custom_logger import CustomLogger
 from datetime import datetime
 
 
-def logger(payload: str):
+def logger(payload):
     token = os.getenv("LOGTAIL_SOURCE_TOKEN")
+    environment = os.getenv("RAILWAY_ENVIRONMENT_NAME")
+
     if token is None:
         raise ValueError("LOGTAIL_SOURCE_TOKEN environment variable is not set")
 
+    payload["environment"] = environment
     authorization = f"Bearer {token}"
 
     conn = http.client.HTTPSConnection("in.logs.betterstack.com")
@@ -20,7 +23,7 @@ def logger(payload: str):
         "Content-Type": "application/json",
     }
 
-    conn.request("POST", "/", payload, headers)
+    conn.request("POST", "/", json.dumps(payload), headers)
     res = conn.getresponse()
     data = res.read()
     print("Sent log to betterstack", data.decode("utf-8"))
@@ -71,18 +74,16 @@ def serialize_datetime(obj):
 
 class MyCustomHandler(CustomLogger):
     async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
-        payload = json.dumps(
-            {
-                "message": "Successful API Call",
-                "level": "info",
-                "kwargs": json.dumps(
-                    redact_api_key_info(kwargs), default=serialize_datetime
-                ),
-                "response_obj": json.dumps(
-                    response_obj.to_dict(), default=serialize_datetime
-                ),
-            },
-        )
+        payload = {
+            "message": "Successful API Call",
+            "level": "info",
+            "kwargs": json.dumps(
+                redact_api_key_info(kwargs), default=serialize_datetime
+            ),
+            "response_obj": json.dumps(
+                response_obj.to_dict(), default=serialize_datetime
+            ),
+        }
         logger(payload)
 
     async def async_post_call_failure_hook(
@@ -91,22 +92,20 @@ class MyCustomHandler(CustomLogger):
         original_exception,
         user_api_key_dict,
     ):
-        payload = json.dumps(
-            {
-                "message": "Failed API Call",
-                "level": "error",
-                "request_data": json.dumps(
-                    redact_api_key_info(request_data), default=serialize_datetime
-                ),
-                "original_exception": json.dumps(
-                    {
-                        "error_type": type(original_exception).__name__,
-                        "error_message": str(original_exception),
-                        "error_args": original_exception.args,
-                    }
-                ),
-            },
-        )
+        payload = {
+            "message": "Failed API Call",
+            "level": "error",
+            "request_data": json.dumps(
+                redact_api_key_info(request_data), default=serialize_datetime
+            ),
+            "original_exception": json.dumps(
+                {
+                    "error_type": type(original_exception).__name__,
+                    "error_message": str(original_exception),
+                    "error_args": original_exception.args,
+                }
+            ),
+        }
         logger(payload)
 
 
