@@ -9,11 +9,13 @@ from datetime import datetime
 def logger(payload):
     token = os.getenv("LOGTAIL_SOURCE_TOKEN")
     environment = os.getenv("RAILWAY_ENVIRONMENT_NAME")
+    railwayServiceName = os.getenv("RAILWAY_SERVICE_NAME")
 
     if token is None:
         raise ValueError("LOGTAIL_SOURCE_TOKEN environment variable is not set")
 
     payload["environment"] = environment
+    payload["railwayServiceName"] = railwayServiceName
     authorization = f"Bearer {token}"
 
     conn = http.client.HTTPSConnection("in.logs.betterstack.com")
