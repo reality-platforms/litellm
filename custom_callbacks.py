@@ -75,7 +75,9 @@ def serialize_datetime(obj):
 
 
 class MyCustomHandler(CustomLogger):
-    async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+    async def async_log_success_event(
+        self, kwargs, response_obj, start_time: datetime, end_time: datetime
+    ):
         payload = {
             "message": "Successful API Call",
             "level": "info",
@@ -85,6 +87,7 @@ class MyCustomHandler(CustomLogger):
             "response_obj": json.dumps(
                 response_obj.to_dict(), default=serialize_datetime
             ),
+            "execution_time": (end_time - start_time).total_seconds(),
         }
         logger(payload)
 
