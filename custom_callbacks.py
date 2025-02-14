@@ -8,6 +8,7 @@ from datetime import datetime
 
 def logger(payload):
     token = os.getenv("LOGTAIL_SOURCE_TOKEN")
+    endpoint = os.getenv("LOGTAIL_ENDPOINT")
     environment = os.getenv("RAILWAY_ENVIRONMENT_NAME")
     railwayServiceName = os.getenv("RAILWAY_SERVICE_NAME")
 
@@ -18,7 +19,7 @@ def logger(payload):
     payload["railwayServiceName"] = railwayServiceName
     authorization = f"Bearer {token}"
 
-    conn = http.client.HTTPSConnection("in.logs.betterstack.com")
+    conn = http.client.HTTPSConnection(endpoint or "in.logs.betterstack.com")
 
     headers = {
         "Authorization": authorization,
