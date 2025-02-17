@@ -79,9 +79,16 @@ model_list:
       api_key: os.environ/FIREWORKS_API_KEY
     model_info:
       mode: chat
-  - model_name: MIXTRAL_8_22B
+  - model_name: LLAMAGUARD_3_8B
     litellm_params:
-      model: fireworks_ai/accounts/fireworks/models/mixtral-8x22b-instruct
+      model: fireworks_ai/accounts/fireworks/models/llama-guard-3-8b
+      api_base: https://api.fireworks.ai/inference/v1
+      api_key: os.environ/FIREWORKS_API_KEY
+    model_info:
+      mode: chat
+  - model_name: DEEPSEEK_R1
+    litellm_params:
+      model: fireworks_ai/accounts/fireworks/models/deepseek-r1
       api_base: https://api.fireworks.ai/inference/v1
       api_key: os.environ/FIREWORKS_API_KEY
     model_info:
@@ -151,10 +158,17 @@ model_list:
       api_key: os.environ/TOGETHER_API_KEY
     model_info:
       mode: chat
-  - model_name: together/MIXTRAL_8_22B
+  - model_name: together/LLAMAGUARD_3_8B
     litellm_params:
       api_base: https://api.together.xyz/v1
-      model: together_ai/mistralai/Mixtral-8x22B-Instruct-v0.1
+      model: together_ai/meta-llama/Meta-Llama-Guard-3-8B
+      api_key: os.environ/TOGETHER_API_KEY
+    model_info:
+      mode: chat
+  - model_name: together/DEEPSEEK_R1
+    litellm_params:
+      api_base: https://api.together.xyz/v1
+      model: together_ai/deepseek-ai/DeepSeek-R1
       api_key: os.environ/TOGETHER_API_KEY
     model_info:
       mode: chat
@@ -195,7 +209,7 @@ model_list:
 
 
 router_settings:
-  fallbacks: [{"UAE_LARGE_V1":["together/UAE_LARGE_V1"]},{"LLAMA_3_1_8B":["together/LLAMA_3_1_8B"]},{"LLAMA_3_1_70B":["together/LLAMA_3_1_70B"]},{"LLAMA_3_3_70B":["together/LLAMA_3_3_70B"]},{"LLAMA_3_2_11B_vision":["together/LLAMA_3_2_11B_vision"]},{"LLAMA_3_2_90B_vision":["together/LLAMA_3_2_90B_vision"]},{"LLAMA_3_1_405B":["together/LLAMA_3_1_405B"]},{"MIXTRAL_8_22B":["together/MIXTRAL_8_22B"]}]
+  fallbacks: [{"UAE_LARGE_V1":["together/UAE_LARGE_V1"]},{"LLAMA_3_1_8B":["together/LLAMA_3_1_8B"]},{"LLAMA_3_1_70B":["together/LLAMA_3_1_70B"]},{"LLAMA_3_3_70B":["together/LLAMA_3_3_70B"]},{"LLAMA_3_2_11B_vision":["together/LLAMA_3_2_11B_vision"]},{"LLAMA_3_2_90B_vision":["together/LLAMA_3_2_90B_vision"]},{"LLAMA_3_1_405B":["together/LLAMA_3_1_405B"]},{"LLAMAGUARD_3_8B":["together/LLAMAGUARD_3_8B"]},{"DEEPSEEK_R1":["together/DEEPSEEK_R1"]}]
 
 
 litellm_settings:
