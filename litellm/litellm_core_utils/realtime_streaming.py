@@ -27,8 +27,6 @@ async with websockets.connect(  # type: ignore
 import asyncio
 import concurrent.futures
 import json
-import traceback
-from asyncio import Task
 from typing import Any, Dict, List, Optional, Union
 
 import litellm
@@ -124,7 +122,6 @@ class RealTimeStreaming:
             pass
 
     async def bidirectional_forward(self):
-
         forward_task = asyncio.create_task(self.backend_to_client_send_messages())
         try:
             await self.client_ack_messages()

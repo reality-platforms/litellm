@@ -164,6 +164,7 @@ class GenerationConfig(TypedDict, total=False):
 
 class Tools(TypedDict, total=False):
     function_declarations: List[FunctionDeclaration]
+    googleSearch: dict
     googleSearchRetrieval: dict
     code_execution: dict
     retrieval: Retrieval
@@ -178,10 +179,17 @@ class TTL(TypedDict, total=False):
     nano: float
 
 
+class PromptTokensDetails(TypedDict):
+    modality: Literal["TEXT", "AUDIO", "IMAGE", "VIDEO"]
+    tokenCount: int
+
+
 class UsageMetadata(TypedDict, total=False):
     promptTokenCount: int
     totalTokenCount: int
     candidatesTokenCount: int
+    cachedContentTokenCount: int
+    promptTokensDetails: List[PromptTokensDetails]
 
 
 class CachedContent(TypedDict, total=False):
@@ -311,12 +319,9 @@ class GenerateContentResponseBody(TypedDict, total=False):
     usageMetadata: Required[UsageMetadata]
 
 
-class FineTunesupervisedTuningSpec(TypedDict, total=False):
-    training_dataset_uri: str
-    validation_dataset: Optional[str]
+class FineTuneHyperparameters(TypedDict, total=False):
     epoch_count: Optional[int]
     learning_rate_multiplier: Optional[float]
-    tuned_model_display_name: Optional[str]
     adapter_size: Optional[
         Literal[
             "ADAPTER_SIZE_UNSPECIFIED",
@@ -328,14 +333,22 @@ class FineTunesupervisedTuningSpec(TypedDict, total=False):
     ]
 
 
+class FineTunesupervisedTuningSpec(TypedDict, total=False):
+    training_dataset_uri: str
+    validation_dataset: Optional[str]
+    tuned_model_display_name: Optional[str]
+    hyperParameters: Optional[FineTuneHyperparameters]
+
+
 class FineTuneJobCreate(TypedDict, total=False):
     baseModel: str
     supervisedTuningSpec: FineTunesupervisedTuningSpec
     tunedModelDisplayName: Optional[str]
 
 
-class ResponseSupervisedTuningSpec(TypedDict):
+class ResponseSupervisedTuningSpec(TypedDict, total=False):
     trainingDatasetUri: Optional[str]
+    hyperParameters: Optional[FineTuneHyperparameters]
 
 
 class ResponseTuningJob(TypedDict):
@@ -356,9 +369,15 @@ class ResponseTuningJob(TypedDict):
     updateTime: Optional[str]
 
 
+class VideoSegmentConfig(TypedDict, total=False):
+    startOffsetSec: int
+    endOffsetSec: int
+    intervalSec: int
+
+
 class InstanceVideo(TypedDict, total=False):
     gcsUri: str
-    videoSegmentConfig: Tuple[float, float, float]
+    videoSegmentConfig: VideoSegmentConfig
 
 
 class InstanceImage(TypedDict, total=False):
@@ -373,7 +392,7 @@ class Instance(TypedDict, total=False):
     video: InstanceVideo
 
 
-class VertexMultimodalEmbeddingRequest(TypedDict, total=False):
+class VertexMultimodalEmbeddingRequest(TypedDict):
     instances: List[Instance]
 
 
@@ -389,7 +408,7 @@ class MultimodalPrediction(TypedDict, total=False):
     videoEmbeddings: List[VideoEmbedding]
 
 
-class MultimodalPredictions(TypedDict, total=False):
+class MultimodalPredictions(TypedDict):
     predictions: List[MultimodalPrediction]
 
 
@@ -474,3 +493,6 @@ class VertexBatchPredictionResponse(TypedDict, total=False):
     createTime: str
     updateTime: str
     modelVersionId: str
+
+
+VERTEX_CREDENTIALS_TYPES = Union[str, Dict[str, str]]

@@ -4,12 +4,9 @@ Wrapper around router cache. Meant to store model id when prompt caching support
 
 import hashlib
 import json
-import time
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, TypedDict
+from typing import TYPE_CHECKING, Any, List, Optional, TypedDict, Union
 
-import litellm
-from litellm import verbose_logger
-from litellm.caching.caching import Cache, DualCache
+from litellm.caching.caching import DualCache
 from litellm.caching.in_memory_cache import InMemoryCache
 from litellm.types.llms.openai import AllMessageValues, ChatCompletionToolParam
 
@@ -19,7 +16,7 @@ if TYPE_CHECKING:
     from litellm.router import Router
 
     litellm_router = Router
-    Span = _Span
+    Span = Union[_Span, Any]
 else:
     Span = Any
     litellm_router = Any
@@ -172,22 +169,3 @@ class PromptCachingCache:
 
         cache_key = PromptCachingCache.get_prompt_caching_cache_key(messages, tools)
         return self.cache.get_cache(cache_key)
-
-    async def async_get_prompt_caching_deployment(
-        self,
-        router: litellm_router,
-        messages: Optional[List[AllMessageValues]],
-        tools: Optional[List[ChatCompletionToolParam]],
-    ) -> Optional[dict]:
-        model_id_dict = await self.async_get_model_id(
-            messages=messages,
-            tools=tools,
-        )
-
-        if model_id_dict is not None:
-            healthy_deployment_pydantic_obj = router.get_deployment(
-                model_id=model_id_dict["model_id"]
-            )
-            if healthy_deployment_pydantic_obj is not None:
-                return healthy_deployment_pydantic_obj.model_dump(exclude_none=True)
-        return None
