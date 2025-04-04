@@ -51,6 +51,15 @@ model_list:
       api_key: os.environ/FIREWORKS_API_KEY
     model_info:
       mode: chat
+
+  - model_name: LLAMA_3_3_70B
+    litellm_params:
+      model: bedrock/us.meta.llama3-3-70b-instruct-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+    model_info:
+      mode: chat
+
   - model_name: LLAMA_3_3_70B
     litellm_params:
       model: fireworks_ai/accounts/fireworks/models/llama-v3p3-70b-instruct
@@ -209,6 +218,7 @@ model_list:
 
 
 router_settings:
+  routing_strategy: latency-based-routing
   fallbacks: [{"UAE_LARGE_V1":["together/UAE_LARGE_V1"]},{"LLAMA_3_1_8B":["together/LLAMA_3_1_8B"]},{"LLAMA_3_1_70B":["together/LLAMA_3_1_70B"]},{"LLAMA_3_3_70B":["together/LLAMA_3_3_70B"]},{"LLAMA_3_2_11B_vision":["together/LLAMA_3_2_11B_vision"]},{"LLAMA_3_2_90B_vision":["together/LLAMA_3_2_90B_vision"]},{"LLAMA_3_1_405B":["together/LLAMA_3_1_405B"]},{"LLAMAGUARD_3_8B":["together/LLAMAGUARD_3_8B"]},{"DEEPSEEK_R1":["together/DEEPSEEK_R1"]}]
 
 
@@ -216,3 +226,6 @@ litellm_settings:
   # custom logging
   callbacks: custom_callbacks.proxy_handler_instance
   drop_params: true
+
+general_settings:
+  global_max_parallel_requests: 100  # the max parallel requests allowed on the proxy all up 

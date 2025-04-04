@@ -51,7 +51,15 @@ def redact_api_key_info(metadata: dict) -> dict:
     """
     new_metadata = {}
     for k, v in metadata.items():
-        if isinstance(v, str) and k.endswith("api_key") and len(v) > 3:
+        if (
+            isinstance(v, str)
+            and (
+                k.endswith("api_key")
+                or k.endswith("key_id")
+                or k.endswith("access_key")
+            )
+            and len(v) > 3
+        ):
             new_metadata[k] = f"****{v[-3:]}"  # Mask all but last 3 characters
         elif isinstance(v, dict):
             new_metadata[k] = redact_api_key_info(v)
