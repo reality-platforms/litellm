@@ -1,20 +1,33 @@
-import types
-from typing import List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Union
+
+from httpx._models import Headers, Response
 
 import litellm
+from litellm.litellm_core_utils.prompt_templates.factory import (
+    convert_to_azure_openai_messages,
+)
+from litellm.llms.base_llm.chat.transformation import BaseLLMException
+from litellm.types.llms.azure import (
+    API_VERSION_MONTH_SUPPORTED_RESPONSE_FORMAT,
+    API_VERSION_YEAR_SUPPORTED_RESPONSE_FORMAT,
+)
+from litellm.types.utils import ModelResponse
+from litellm.utils import supports_response_schema
 
 from ....exceptions import UnsupportedParamsError
-from ....types.llms.openai import (
-    AllMessageValues,
-    ChatCompletionToolChoiceFunctionParam,
-    ChatCompletionToolChoiceObjectParam,
-    ChatCompletionToolParam,
-    ChatCompletionToolParamFunctionChunk,
-)
-from ...prompt_templates.factory import convert_to_azure_openai_messages
+from ....types.llms.openai import AllMessageValues
+from ...base_llm.chat.transformation import BaseConfig
+from ..common_utils import AzureOpenAIError
+
+if TYPE_CHECKING:
+    from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
+
+    LoggingClass = LiteLLMLoggingObj
+else:
+    LoggingClass = Any
 
 
-class AzureOpenAIConfig:
+class AzureOpenAIConfig(BaseConfig):
     """
     Reference: https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#chat-completions
 
@@ -61,23 +74,9 @@ class AzureOpenAIConfig:
 
     @classmethod
     def get_config(cls):
-        return {
-            k: v
-            for k, v in cls.__dict__.items()
-            if not k.startswith("__")
-            and not isinstance(
-                v,
-                (
-                    types.FunctionType,
-                    types.BuiltinFunctionType,
-                    classmethod,
-                    staticmethod,
-                ),
-            )
-            and v is not None
-        }
+        return super().get_config()
 
-    def get_supported_openai_params(self):
+    def get_supported_openai_params(self, model: str) -> List[str]:
         return [
             "temperature",
             "n",
@@ -103,17 +102,47 @@ class AzureOpenAIConfig:
             "seed",
             "extra_headers",
             "parallel_tool_calls",
+            "prediction",
+            "modalities",
+            "audio",
         ]
+
+    def _is_response_format_supported_model(self, model: str) -> bool:
+        """
+        - all 4o models are supported
+        - check if 'supports_response_format' is True from get_model_info
+        - [TODO] support smart retries for 3.5 models (some supported, some not)
+        """
+        if "4o" in model:
+            return True
+        elif supports_response_schema(model):
+            return True
+
+        return False
+
+    def _is_response_format_supported_api_version(
+        self, api_version_year: str, api_version_month: str
+    ) -> bool:
+        """
+        - check if api_version is supported for response_format
+        """
+
+        is_supported = (
+            int(api_version_year) <= API_VERSION_YEAR_SUPPORTED_RESPONSE_FORMAT
+            and int(api_version_month) >= API_VERSION_MONTH_SUPPORTED_RESPONSE_FORMAT
+        )
+
+        return is_supported
 
     def map_openai_params(
         self,
         non_default_params: dict,
         optional_params: dict,
         model: str,
-        api_version: str,  # Y-M-D-{optional}
-        drop_params,
+        drop_params: bool,
+        api_version: str = "",
     ) -> dict:
-        supported_openai_params = self.get_supported_openai_params()
+        supported_openai_params = self.get_supported_openai_params(model)
 
         api_version_times = api_version.split("-")
         api_version_year = api_version_times[0]
@@ -160,53 +189,39 @@ class AzureOpenAIConfig:
                 else:
                     optional_params["tool_choice"] = value
             elif param == "response_format" and isinstance(value, dict):
-                json_schema: Optional[dict] = None
-                schema_name: str = ""
-                if "response_schema" in value:
-                    json_schema = value["response_schema"]
-                    schema_name = "json_tool_call"
-                elif "json_schema" in value:
-                    json_schema = value["json_schema"]["schema"]
-                    schema_name = value["json_schema"]["name"]
-                """
-                Follow similar approach to anthropic - translate to a single tool call. 
+                _is_response_format_supported_model = (
+                    self._is_response_format_supported_model(model)
+                )
 
-                When using tools in this way: - https://docs.anthropic.com/en/docs/build-with-claude/tool-use#json-mode
-                - You usually want to provide a single tool
-                - You should set tool_choice (see Forcing tool use) to instruct the model to explicitly use that tool
-                - Remember that the model will pass the input to the tool, so the name of the tool and description should be from the model’s perspective.
-                """
-                if json_schema is not None and (
-                    (api_version_year <= "2024" and api_version_month < "08")
-                    or "gpt-4o" not in model
-                ):  # azure api version "2024-08-01-preview" onwards supports 'json_schema' only for gpt-4o
-                    _tool_choice = ChatCompletionToolChoiceObjectParam(
-                        type="function",
-                        function=ChatCompletionToolChoiceFunctionParam(
-                            name=schema_name
-                        ),
+                is_response_format_supported_api_version = (
+                    self._is_response_format_supported_api_version(
+                        api_version_year, api_version_month
                     )
-
-                    _tool = ChatCompletionToolParam(
-                        type="function",
-                        function=ChatCompletionToolParamFunctionChunk(
-                            name=schema_name, parameters=json_schema
-                        ),
-                    )
-
-                    optional_params["tools"] = [_tool]
-                    optional_params["tool_choice"] = _tool_choice
-                    optional_params["json_mode"] = True
-                else:
-                    optional_params["response_format"] = value
+                )
+                is_response_format_supported = (
+                    is_response_format_supported_api_version
+                    and _is_response_format_supported_model
+                )
+                optional_params = self._add_response_format_to_tools(
+                    optional_params=optional_params,
+                    value=value,
+                    is_response_format_supported=is_response_format_supported,
+                )
+            elif param == "tools" and isinstance(value, list):
+                optional_params.setdefault("tools", [])
+                optional_params["tools"].extend(value)
             elif param in supported_openai_params:
                 optional_params[param] = value
 
         return optional_params
 
-    @classmethod
     def transform_request(
-        cls, model: str, messages: List[AllMessageValues], optional_params: dict
+        self,
+        model: str,
+        messages: List[AllMessageValues],
+        optional_params: dict,
+        litellm_params: dict,
+        headers: dict,
     ) -> dict:
         messages = convert_to_azure_openai_messages(messages)
         return {
@@ -214,6 +229,24 @@ class AzureOpenAIConfig:
             "messages": messages,
             **optional_params,
         }
+
+    def transform_response(
+        self,
+        model: str,
+        raw_response: Response,
+        model_response: ModelResponse,
+        logging_obj: LoggingClass,
+        request_data: dict,
+        messages: List[AllMessageValues],
+        optional_params: dict,
+        litellm_params: dict,
+        encoding: Any,
+        api_key: Optional[str] = None,
+        json_mode: Optional[bool] = None,
+    ) -> ModelResponse:
+        raise NotImplementedError(
+            "Azure OpenAI handler.py has custom logic for transforming response, as it uses the OpenAI SDK."
+        )
 
     def get_mapped_special_auth_params(self) -> dict:
         return {"token": "azure_ad_token"}
@@ -246,3 +279,23 @@ class AzureOpenAIConfig:
             "westus3",
             "westus4",
         ]
+
+    def get_error_class(
+        self, error_message: str, status_code: int, headers: Union[dict, Headers]
+    ) -> BaseLLMException:
+        return AzureOpenAIError(
+            message=error_message, status_code=status_code, headers=headers
+        )
+
+    def validate_environment(
+        self,
+        headers: dict,
+        model: str,
+        messages: List[AllMessageValues],
+        optional_params: dict,
+        api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
+    ) -> dict:
+        raise NotImplementedError(
+            "Azure OpenAI has custom logic for validating environment, as it uses the OpenAI SDK."
+        )

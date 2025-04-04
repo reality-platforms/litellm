@@ -5,8 +5,6 @@ import traceback
 import uuid
 
 from dotenv import load_dotenv
-from test_rerank import assert_response_shape
-
 
 load_dotenv()
 sys.path.insert(
@@ -42,12 +40,7 @@ import logging
 
 def setup_cache():
     # Set up the cache
-    cache = Cache(
-        type=LiteLLMCacheType.REDIS,
-        host=os.environ["REDIS_HOST"],
-        port=os.environ["REDIS_PORT"],
-        password=os.environ["REDIS_PASSWORD"],
-    )
+    cache = Cache(type=LiteLLMCacheType.LOCAL)
     litellm.cache = cache
     return cache
 

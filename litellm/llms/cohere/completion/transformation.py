@@ -1,25 +1,26 @@
-import types
-from typing import TYPE_CHECKING, Any, List, Optional
+import time
+from typing import TYPE_CHECKING, Any, AsyncIterator, Iterator, List, Optional, Union
 
 import httpx
 
-from litellm.llms.base_llm.transformation import (
-    BaseConfig,
-    BaseLLMException,
-    LoggingClass,
+import litellm
+from litellm.litellm_core_utils.prompt_templates.common_utils import (
+    convert_content_list_to_str,
 )
+from litellm.llms.base_llm.chat.transformation import BaseConfig, BaseLLMException
 from litellm.types.llms.openai import AllMessageValues
-from litellm.types.utils import ModelResponse
+from litellm.types.utils import Choices, Message, ModelResponse, Usage
 
 from ..common_utils import CohereError
+from ..common_utils import ModelResponseIterator as CohereModelResponseIterator
 from ..common_utils import validate_environment as cohere_validate_environment
 
 if TYPE_CHECKING:
-    from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
+    from litellm.litellm_core_utils.litellm_logging import Logging as _LiteLLMLoggingObj
 
-    LoggingObj = LiteLLMLoggingObj
+    LiteLLMLoggingObj = _LiteLLMLoggingObj
 else:
-    LoggingObj = Any
+    LiteLLMLoggingObj = Any
 
 
 class CohereTextConfig(BaseConfig):
@@ -85,7 +86,7 @@ class CohereTextConfig(BaseConfig):
         return_likelihoods: Optional[str] = None,
         logit_bias: Optional[dict] = None,
     ) -> None:
-        locals_ = locals()
+        locals_ = locals().copy()
         for key, value in locals_.items():
             if key != "self" and value is not None:
                 setattr(self.__class__, key, value)
@@ -96,22 +97,23 @@ class CohereTextConfig(BaseConfig):
 
     def validate_environment(
         self,
-        api_key: str,
         headers: dict,
         model: str,
         messages: List[AllMessageValues],
         optional_params: dict,
+        api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
     ) -> dict:
-        return cohere_validate_environment(api_key=api_key, headers=headers)
-
-    def _transform_messages(
-        self,
-        messages: List[AllMessageValues],
-    ) -> List[AllMessageValues]:
-        raise NotImplementedError
+        return cohere_validate_environment(
+            headers=headers,
+            model=model,
+            messages=messages,
+            optional_params=optional_params,
+            api_key=api_key,
+        )
 
     def get_error_class(
-        self, error_message: str, status_code: int, headers: dict
+        self, error_message: str, status_code: int, headers: Union[dict, httpx.Headers]
     ) -> BaseLLMException:
         return CohereError(status_code=status_code, message=error_message)
 
@@ -165,19 +167,98 @@ class CohereTextConfig(BaseConfig):
         litellm_params: dict,
         headers: dict,
     ) -> dict:
-        raise NotImplementedError
+        prompt = " ".join(
+            convert_content_list_to_str(message=message) for message in messages
+        )
+
+        ## Load Config
+        config = litellm.CohereConfig.get_config()
+        for k, v in config.items():
+            if (
+                k not in optional_params
+            ):  # completion(top_k=3) > cohere_config(top_k=3) <- allows for dynamic variables to be passed in
+                optional_params[k] = v
+
+        ## Handle Tool Calling
+        if "tools" in optional_params:
+            _is_function_call = True
+            tool_calling_system_prompt = self._construct_cohere_tool_for_completion_api(
+                tools=optional_params["tools"]
+            )
+            optional_params["tools"] = tool_calling_system_prompt
+
+        data = {
+            "model": model,
+            "prompt": prompt,
+            **optional_params,
+        }
+
+        return data
 
     def transform_response(
         self,
         model: str,
         raw_response: httpx.Response,
         model_response: ModelResponse,
-        logging_obj: LoggingObj,
-        api_key: str,
+        logging_obj: LiteLLMLoggingObj,
         request_data: dict,
         messages: List[AllMessageValues],
         optional_params: dict,
+        litellm_params: dict,
         encoding: Any,
+        api_key: Optional[str] = None,
         json_mode: Optional[bool] = None,
     ) -> ModelResponse:
-        raise NotImplementedError
+        prompt = " ".join(
+            convert_content_list_to_str(message=message) for message in messages
+        )
+        completion_response = raw_response.json()
+        choices_list = []
+        for idx, item in enumerate(completion_response["generations"]):
+            if len(item["text"]) > 0:
+                message_obj = Message(content=item["text"])
+            else:
+                message_obj = Message(content=None)
+            choice_obj = Choices(
+                finish_reason=item["finish_reason"],
+                index=idx + 1,
+                message=message_obj,
+            )
+            choices_list.append(choice_obj)
+        model_response.choices = choices_list  # type: ignore
+
+        ## CALCULATING USAGE
+        prompt_tokens = len(encoding.encode(prompt))
+        completion_tokens = len(
+            encoding.encode(model_response["choices"][0]["message"].get("content", ""))
+        )
+
+        model_response.created = int(time.time())
+        model_response.model = model
+        usage = Usage(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+        )
+        setattr(model_response, "usage", usage)
+        return model_response
+
+    def _construct_cohere_tool_for_completion_api(
+        self,
+        tools: Optional[List] = None,
+    ) -> dict:
+        if tools is None:
+            tools = []
+        return {"tools": tools}
+
+    def get_model_response_iterator(
+        self,
+        streaming_response: Union[Iterator[str], AsyncIterator[str], ModelResponse],
+        sync_stream: bool,
+        json_mode: Optional[bool] = False,
+    ):
+        return CohereModelResponseIterator(
+            streaming_response=streaming_response,
+            sync_stream=sync_stream,
+            json_mode=json_mode,
+        )
